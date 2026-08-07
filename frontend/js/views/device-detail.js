@@ -956,14 +956,54 @@ function showDevicePreview(device) {
         <button class="btn btn-secondary btn-sm" id="dpvClose">${t('widget.close')}</button>
       </div>
       <div style="padding:16px;display:flex;align-items:center;justify-content:center;background:#000">
-        <div id="dpvStage" style="height:78vh;max-width:92vw;aspect-ratio:${displayAspectRatio(device.orientation)};background:#000">
-          <iframe style="border:0;background:#000" src="/player?preview=1&device=${encodeURIComponent(device.id)}&t=${Date.now()}"></iframe>
+        <!-- 72vh, not 78: the transport row below costs ~6vh inside the 92vh modal cap —
+             same arithmetic as the playlist preview (#238/#239). -->
+        <div id="dpvStage" style="height:72vh;max-width:92vw;aspect-ratio:${displayAspectRatio(device.orientation)};background:#000">
+          <iframe id="dpvFrame" style="border:0;background:#000" src="/player?preview=1&device=${encodeURIComponent(device.id)}&t=${Date.now()}"></iframe>
         </div>
+      </div>
+      <div style="display:flex;justify-content:center;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--border)">
+        <button class="btn btn-secondary btn-sm" id="dpvPrev" disabled>&#8249; ${t('playlist.preview_prev')}</button>
+        <span id="dpvPosition" style="color:var(--text-muted);font-size:13px;min-width:110px;text-align:center">&nbsp;</span>
+        <button class="btn btn-secondary btn-sm" id="dpvNext" disabled>${t('playlist.preview_next')} &#8250;</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  frameDeviceOutput(overlay.querySelector('#dpvStage'), overlay.querySelector('#dpvStage iframe'), device.orientation);
-  const close = () => overlay.remove();
+  const frame = overlay.querySelector('#dpvFrame');
+  frameDeviceOutput(overlay.querySelector('#dpvStage'), frame, device.orientation);
+
+  // #239 transport, same as the playlist preview: the preview IS the real player in device-free
+  // preview mode, so prev/next is a postMessage to that one iframe — deliberately NOT the
+  // playlist_next device command, which drives the REAL screen. The preview player ignores the
+  // message unless it booted with ?preview=1, and a live display isn't reachable from this page.
+  const btnPrev = overlay.querySelector('#dpvPrev');
+  const btnNext = overlay.querySelector('#dpvNext');
+  const position = overlay.querySelector('#dpvPosition');
+  const send = (action) => {
+    try { frame.contentWindow?.postMessage({ source: 'screentinker-preview', action }, window.location.origin); } catch (e) {}
+  };
+  const onPlayerMessage = (ev) => {
+    if (ev.origin !== window.location.origin) return;
+    if (ev.source !== frame.contentWindow) return;
+    const d = ev.data;
+    if (!d || d.source !== 'screentinker-player' || d.type !== 'preview:state') return;
+    if (d.zoned || !d.total) {
+      btnPrev.disabled = btnNext.disabled = true;
+      position.textContent = d.zoned ? t('playlist.preview_zoned') : '';
+      return;
+    }
+    btnPrev.disabled = btnNext.disabled = false;
+    position.textContent = t('playlist.preview_position', { current: (d.index >= 0 ? d.index : 0) + 1, total: d.total });
+  };
+  window.addEventListener('message', onPlayerMessage);
+  frame.addEventListener('load', () => send('sync'));
+  btnPrev.onclick = () => send('prev');
+  btnNext.onclick = () => send('next');
+
+  const close = () => {
+    overlay.remove();
+    window.removeEventListener('message', onPlayerMessage);
+  };
   overlay.querySelector('#dpvClose').onclick = close;
   overlay.onclick = (e) => { if (e.target === overlay) close(); };
   document.addEventListener('keydown', function esc2(ev) {
