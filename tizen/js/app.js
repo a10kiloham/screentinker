@@ -394,6 +394,15 @@
       // dashboard slider did nothing on Tizen at all.
       if (type === 'set_volume') { applyVolume(payload); return; }
 
+      // Playlist skip — same reasoning as set_volume: pure player logic, works on every build.
+      // Mirrors the KEYCODE_DPAD_RIGHT / KEYCODE_DPAD_LEFT remote keys below.
+      if (type === 'playlist_next') { player.advance(); return; }
+      if (type === 'playlist_previous') {
+        var count = player.getItemCount();
+        if (count > 0) player.gotoIndex((player.getIndex() - 1 + count) % count);
+        return;
+      }
+
       if (!window.STDeviceControl) { reportCmd('error', type, 'device-control unavailable'); return; }
       STDeviceControl.run(type, payload).then(function (res) {
         var note = res.note;

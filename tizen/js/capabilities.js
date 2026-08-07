@@ -38,6 +38,11 @@
       // Playback surface — all implemented in player.js on every Tizen build.
       'playback.video', 'playback.image', 'playback.widget', 'playback.youtube',
       'playback.zones', 'playback.transitions', 'playback.pip',
+      // playlist_next / playlist_previous (app.js handles them ahead of STDeviceControl, same
+      // as set_volume — player.advance()/gotoIndex exist on every build). NOT in the server's
+      // Tizen baseline: a fielded .wgt without this build has no handler, so only a panel
+      // actually running this code claims it.
+      'playback.control',
 
       // Per-item mute, honouring the shared rule in server/lib/media-mute.js (including the
       // YouTube embed, which used to be hardcoded muted and unmutable).

@@ -136,3 +136,21 @@ test('the baseline describes a FIELDED player, not the one we are about to ship'
   assert.ok(caps.supports(tizen, 'remote.screenshot'), 'captureAndSend exists in the shipped player');
   assert.ok(caps.supports(tizen, 'remote.stream'), 'startStreaming exists in the shipped player');
 });
+
+test('playlist skip: a served player can be driven, a fielded APK/.wgt is refused by name', () => {
+  // playlist_next/playlist_previous are handled by the web player this server serves (and by the
+  // Tizen build that declares for itself). The web and BrightSign baselines claim playback.control
+  // for the served-player reason documented on audio.volume; Android and Tizen baselines must NOT —
+  // no fielded artifact has the device:command handler, and a claimed-but-dead skip button is the
+  // exact bug this model exists to stop.
+  for (const type of ['playlist_next', 'playlist_previous']) {
+    assert.ok(caps.commandAllowed({ android_version: 'Web/Chrome' }, type).ok, `web baseline honours ${type}`);
+    assert.ok(caps.commandAllowed({ platform: 'brightsign' }, type).ok, `BrightSign runs the served player`);
+    const apk = caps.commandAllowed({ client_type: 'apk' }, type);
+    assert.equal(apk.ok, false, `fielded Android has no ${type} handler`);
+    assert.equal(apk.capability, 'playback.control', 'refusal names the capability');
+    assert.equal(caps.commandAllowed({ platform: 'Tizen 6.5' }, type).ok, false, 'fielded .wgt has no handler');
+  }
+  // An updated player that declares playback.control is honoured regardless of platform.
+  assert.ok(caps.commandAllowed({ client_type: 'wgt', capabilities: '["playback.control"]' }, 'playlist_next').ok);
+});

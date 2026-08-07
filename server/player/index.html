@@ -1676,6 +1676,16 @@
           if (BS && BS.reboot()) console.log('[bs] reboot requested via host');
           else console.log('reboot: not supported on this player');
         }
+        // Operator skip from the Now Playing / Remote screens. Same moves as the
+        // KEYCODE_DPAD_RIGHT / KEYCODE_DPAD_LEFT remote keys, as their own command so
+        // playback control is not conflated with input injection (capability
+        // 'playback.control'). The length guard matters: -2 % 0 is NaN, and an empty
+        // playlist must ignore the skip rather than corrupt currentIndex.
+        if (data.type === 'playlist_next' && playlist.length > 0) nextItem();
+        if (data.type === 'playlist_previous' && playlist.length > 0) {
+          currentIndex = (currentIndex - 2 + 2 * playlist.length) % playlist.length;
+          nextItem();
+        }
         // Media volume. Applies to whatever is playing now and is remembered for items mounted
         // later (see setMediaVolume). The wire parsing is volumeLevelFromCommand().
         if (data.type === 'set_volume') {
@@ -1808,6 +1818,8 @@
         // Render paths that exist in this file unconditionally.
         'playback.video', 'playback.image', 'playback.widget', 'playback.youtube',
         'playback.zones', 'playback.pip',
+        // playlist_next / playlist_previous — nextItem() exists unconditionally in this file.
+        'playback.control',
         // #129 per-item mute plus the operator volume added alongside it.
         'audio.mute', 'audio.volume',
         // CSS transform in a browser; the host rotates the output on BrightSign. Both real.

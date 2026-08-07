@@ -289,6 +289,11 @@ async function loadDevice(deviceId, activeTab = null) {
               </div>`
           }
         </div>
+        ${can('playback.control') ? `
+        <div style="display:flex;gap:8px;margin:10px 0">
+          <button class="btn btn-secondary btn-sm" id="skipPrevBtn">&#9198; ${t('device.skip_prev')}</button>
+          <button class="btn btn-secondary btn-sm" id="skipNextBtn">${t('device.skip_next')} &#9197;</button>
+        </div>` : ''}
         <p id="nowPlayingInfo" style="color:var(--text-secondary);font-size:13px;">
           ${device.assignments?.length ? tn('device.playlist_count', device.assignments.length) : t('device.no_content_assigned')}
         </p>
@@ -663,6 +668,13 @@ async function loadDevice(deviceId, activeTab = null) {
             ${can('remote.stream') ? `
             <button class="btn btn-primary" id="startRemoteBtn">${t('device.remote.start')}</button>
             <button class="btn btn-secondary" id="stopRemoteBtn" style="display:none">${t('device.remote.stop')}</button>
+            <hr style="border-color:var(--border);margin:8px 0">` : ''}
+            ${can('playback.control') ? `
+            <!-- Playlist skip: a command, not an injected key — see 'playback.control' -->
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-secondary btn-sm" style="flex:1" id="remoteSkipPrevBtn">&#9198; ${t('device.skip_prev')}</button>
+              <button class="btn btn-secondary btn-sm" style="flex:1" id="remoteSkipNextBtn">${t('device.skip_next')} &#9197;</button>
+            </div>
             <hr style="border-color:var(--border);margin:8px 0">` : ''}
             ${can('remote.input') ? `
             <!-- Key pad -->
@@ -1338,6 +1350,17 @@ function setupActions(device) {
       else if (ack?.reason === 'no_ack') showToast(t('device.toast.command_no_ack', { cmd: cmdLabel }), 'error');
       else showToast(t('device.toast.command_undeliverable', { cmd: cmdLabel }), 'error');
     });
+  }
+
+  // Playlist skip — the Now Playing pair and the Remote pair drive the same commands.
+  for (const [id, type] of [
+    ['skipNextBtn', 'playlist_next'], ['remoteSkipNextBtn', 'playlist_next'],
+    ['skipPrevBtn', 'playlist_previous'], ['remoteSkipPrevBtn', 'playlist_previous'],
+  ]) {
+    const next = type === 'playlist_next';
+    document.getElementById(id)?.addEventListener('click', () =>
+      sendWithFeedback(type, t(next ? 'device.skip_next' : 'device.skip_prev'),
+        next ? 'device.toast.skipped_next' : 'device.toast.skipped_prev'));
   }
 
   // Reboot (double-click to confirm)

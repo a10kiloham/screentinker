@@ -28,6 +28,10 @@ const CAPABILITIES = [
   // playback surface
   'playback.video', 'playback.image', 'playback.widget', 'playback.youtube',
   'playback.zones', 'playback.transitions', 'playback.pip',
+  // Operator-driven playlist navigation (playlist_next / playlist_previous commands). Distinct
+  // from remote.input: skipping an item is playback control the player performs on its own
+  // playlist state, not an injected input event that may go to the host OS instead.
+  'playback.control',
   // audio
   'audio.mute', 'audio.volume',
   // display
@@ -161,6 +165,9 @@ const BASELINE = {
   brightsign: [
     'playback.video', 'playback.image', 'playback.widget', 'playback.youtube',
     'playback.zones', 'playback.transitions', 'playback.pip',
+    // Same served-player reasoning as BASELINE.web / audio.volume below: playlist navigation is
+    // pure playlist logic inside the web player we serve — no bridge, no hardware plane involved.
+    'playback.control',
     'audio.mute',
     // CSS transform. Graphics rotate; with hwz the video sits on a hardware plane that ignores it,
     // so this is partial — but nothing routes a COMMAND to display.rotation and no control is
@@ -199,6 +206,10 @@ const BASELINE = {
   web: [
     'playback.video', 'playback.image', 'playback.widget', 'playback.youtube',
     'playback.zones', 'playback.transitions', 'playback.pip',
+    // playlist_next / playlist_previous. Safe to claim for every undeclared browser panel for the
+    // BASELINE.web reason documented on audio.volume below: this player is SERVED BY THE SERVER,
+    // so the handler exists the moment the server ships it — there is no fielded artifact to lag.
+    'playback.control',
     'audio.mute',
     'display.rotation',
     'remote.screenshot', 'remote.stream', 'remote.input',
@@ -319,6 +330,10 @@ const COMMAND_CAPABILITY = {
 
   // audio
   set_volume: 'audio.volume',
+
+  // playback (operator skip on the Now Playing / Remote screens)
+  playlist_next: 'playback.control',
+  playlist_previous: 'playback.control',
 
   // system control (#160 Track-A)
   set_brightness: 'display.brightness',       // per-window overlay dim (Tier 0)
